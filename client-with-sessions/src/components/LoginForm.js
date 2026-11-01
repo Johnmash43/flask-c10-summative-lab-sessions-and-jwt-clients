@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { readApiResponse } from "../api";
 import { Button, Error, Input, FormField, Label } from "../styles";
 
 function LoginForm({ onLogin }) {
@@ -7,23 +8,22 @@ function LoginForm({ onLogin }) {
   const [errors, setErrors] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+    setErrors([]);
     setIsLoading(true);
-    fetch("/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ username, password }),
-    }).then((r) => {
+    try {
+      const data = await readApiResponse(await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      }));
+      onLogin(data);
+    } catch (error) {
+      setErrors([error.message || "Unable to connect to the server. Please try again."]);
+    } finally {
       setIsLoading(false);
-      if (r.ok) {
-        r.json().then((user) => onLogin(user));
-      } else {
-        r.json().then((err) => setErrors(err.errors));
-      }
-    });
+    }
   }
 
   return (
@@ -33,9 +33,10 @@ function LoginForm({ onLogin }) {
         <Input
           type="text"
           id="username"
-          autoComplete="off"
+          autoComplete="username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          required
         />
       </FormField>
       <FormField>
@@ -46,10 +47,11 @@ function LoginForm({ onLogin }) {
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
         />
       </FormField>
       <FormField>
-        <Button variant="fill" color="primary" type="submit">
+        <Button variant="fill" color="primary" type="submit" disabled={isLoading}>
           {isLoading ? "Loading..." : "Login"}
         </Button>
       </FormField>
